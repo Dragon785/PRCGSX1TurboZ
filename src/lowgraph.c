@@ -123,3 +123,16 @@ void set4096Mode(void)
 	clearGRAM();
 	outp(0x1fb0, 0x80);
 }
+
+// COPY GRAM Plane(Bank 0/1)
+void copyPlane(unsigned short srcAddr, unsigned short dstAddr)
+{
+	for (unsigned char bank = 0; bank < 2; ++bank)
+	{
+		setWriteGRAM(bank);
+		for (int i = 0; i < 0x4000; ++i)
+		{
+			outp(dstAddr++, inp(srcAddr++));
+		}
+	}
+}

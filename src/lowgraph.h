@@ -17,4 +17,7 @@ extern void clearGRAM(void);
 // Set 4096Color Mode(Screen Size 320*200)
 extern void set4096Mode(void);
 
+// COPY GRAM Plane(Bank 0/1)
+extern void copyPlane(unsigned short srcAddr, unsigned short dstAddr);
+
 #endif
