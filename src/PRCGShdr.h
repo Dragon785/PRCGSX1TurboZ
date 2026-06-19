@@ -3,6 +3,7 @@
 
 /* https://maaberu.web.fc2.com/prcgs.htmを参考にヘッダを記述 */
 
+#pragma align(1)
 typedef struct tag_PRCGS
 {
 	unsigned char hdr[3]; // 'P_3'
@@ -18,6 +19,6 @@ typedef struct tag_PRCGS
 	unsigned char length[7]; // 長さテーブル。実際の長さ-1が入る
 	unsigned char mono; // 1:モノクロ
 	unsigned char reserved[62];
-} PRCGSHeader;
+} PRCGSHeader /* __attribute__((__packed__)) */;
 
 #endif
