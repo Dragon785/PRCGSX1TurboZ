@@ -5,11 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DEBUG_WRITE_HDR_INFO
+// #define DEBUG_WRITE_HDR_INFO
 
 static PRCGSHeader hdr = { 0 };
 static int width, height; // 読み取っておく
-static char runLength[8]; // 0-6 ヘッダ+1 7:1で固定
+static unsigned int runLength[8]; // ランレングステーブル 0:1で固定 1-7 ヘッダ+1
 static char hdrReady = 0; // ヘッダ準備できたか
 static char planeToWrite = 0;
 
@@ -31,9 +31,9 @@ int setPRCGSHeader(const unsigned char* headers[])
 
 	for (int i = 0; i < 7; ++i)
 	{
-		runLength[i] = hdr.length[i] + 1;
+		runLength[i+1] = hdr.length[i]+1 ;
 	}
-	runLength[7] = 1; // 固定
+	runLength[0] = 1; // 固定
 
 #if (defined(DEBUG_WRITE_HDR_INFO))
 	printf("CreateSoftVer %c%c\n",hdr.ver[0],hdr.ver[1]);
@@ -73,16 +73,21 @@ int setPRCGSHeader(const unsigned char* headers[])
 	printf(hdr.arc ? "Compressed\n" : "UnCompressed\n");
 	
 	printf("RunLength Data ");
-	for (int i = 0; i < 8; ++i)
+	for (int i = 0; i < 7; ++i)
 	{
 		printf("%d ", hdr.length[i]);
+	}
+	printf("\n");
+	for (int i = 0; i < 8; ++i)
+	{
+		printf("%d ", runLength[i]);
 	}
 	printf("\n");
 	printf(hdr.mono ? "MonoChrome\n" : "Color\n");
 
 #endif
 
-	if ((width > 320) || (height < 200))
+	if ((width > 320) || (height > 200))
 	{
 		printf("over 320x200 data can't view!");
 		return 1;
@@ -100,7 +105,7 @@ int setPRCGSHeader(const unsigned char* headers[])
 	planeToWrite = 0;
 
 	// Red描画準備開始
-	initDrawHLine(PLANES[planeToWrite]);
+	initDrawHLine(PLANES[planeToWrite],width,height);
 	return 0;
 }
 
@@ -109,15 +114,15 @@ int addPRCGSData(const unsigned char dat)
 	if (!hdrReady)
 	{
 		printf("must read Header!\n");
-		return 0; // finish
+		return 1; // finish
 	}
-	// ５ビット階調なのでとりあえず一番下は普通に捨てる
+	// ５ビット階調なのでとりあえず一番下は普通に捨てて4ビット階調に変換
 	unsigned char level = (dat >> 1) & 0xf;
-	unsigned char len = runLength[(dat >> 5)];
+	unsigned int len = runLength[(dat >> 5)&0x7];
 	int result = addHLine(level, len);
 	if (result == 0)
 	{
-		return 1; // 同じプレーンで描画継続
+		return 0; // 同じプレーンで描画継続
 	}
 	// １プレーン描画完了
 	if (hdr.mono)
@@ -127,19 +132,22 @@ int addPRCGSData(const unsigned char dat)
 		{
 			copyPlane(PLANES[0], PLANES[i]);
 		}
-		return 0; // 終了
+		return 1; // 終了
 	}
 	planeToWrite++;
 	if (planeToWrite > 2)
 	{
 		// 全プレーン描画完了
 
-		return 0;
+		return 1;
 	}
-	initDrawHLine(PLANES[planeToWrite]);
+	// 次のプレーンへ
+	initDrawHLine(PLANES[planeToWrite],width,height);
 	if (result > 0)
 	{
 		// 積み残し分描画
 		addHLine(level, result);
 	}
+
+	return 0; // 描画継続
 }

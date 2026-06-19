@@ -4,14 +4,12 @@
 #define __DRAWHLINE_H__
 
 // ベースアドレスをセットして描画位置を(0,0)にする
-extern void initDrawHLine(unsigned int baseAddr);
+extern void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h);
 
 // ベースアドレスから横方向に指定階調,指定長さ描画
 // 横方向にはみ出る場合は一段下に折り返し
 // プレーン境界をはみ出した場合はそこで描画を止めて残数を返す。残数が0の場合は-1を返す
 // それ以外の時は戻り値0
-extern int addHLine(unsigned char level, unsigned char length);
-
-extern void drawTest(void);
+extern int addHLine(unsigned char level, unsigned int length);
 
 #endif

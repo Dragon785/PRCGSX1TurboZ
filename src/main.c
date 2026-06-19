@@ -2,21 +2,15 @@
 #include <stdio.h>
 #include "PRCGS.h"
 
-#include "drawHLine.h" // lowlevel test
 #include "lowgraph.h"
+
+#define BUFSIZE 512
+// データ読み込み用バッファ
+static char databuf[BUFSIZE];
 
 int main(int argc,char* argv[])
 {
-#if 1
-	set4096Mode();
-	initDrawHLine(0x4000);
-	drawTest();
-
-	printf("ANY KEY");
-	int dmy=getch();
-
-	return 0;
-#endif
+	clrscr();
 	if (argc != 2)
 	{
 		printf("Usage: look PRCFile\n");
@@ -38,9 +32,8 @@ int main(int argc,char* argv[])
 			int finished = 0;
 			do
 			{
-				// 残り読み込み
-				char databuf[256];
-				int c = fread(databuf, 1, 256, f);
+				// データ読み取り
+				int c = fread(databuf, 1, BUFSIZE, f);
 				if (c > 0)
 				{
 					for (int i = 0; i < c; ++i)
@@ -60,5 +53,11 @@ int main(int argc,char* argv[])
 	}
 
 	fclose(f);
+
+	printf("ANY KEY");
+	int dmy = getch();
+
+	clearGRAM();
+
 	return 0;
 }

@@ -4,8 +4,10 @@
 #include <stdio.h> // for debug
 
 // 内部ワーク
+// 描画したい画面サイズ
+static unsigned int width, height;
 // 次に描画する座標(320,200で最後)
-static int nextX = 0, nextY = 0;
+static unsigned int nextX = 0, nextY = 0;
 // 書き込み基準ベース
 static unsigned int planeBase = 0;
 
@@ -110,19 +112,14 @@ static const PaintTbl* PaintTbls[7] =
 // (sx,y)-(ex,y)までgrad階調で横線を引く
 // sx<=exが条件
 // 将来的には高速化の際にこれを使わないようになりそう
-static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
+static void drawHorizontalSub(int sx, int len, int y, unsigned char grad)
 {
-	if (sx > ex)
-	{
-		// 描画の必要がない
-		return;
-	}
 	// 書き込み相対アドレス計算
 	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
 	
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
-		int writeLen = ex - sx + 1; // 横に引くドットの数
+		int writeLen = len; // 横に引くドットの数
 
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
@@ -183,64 +180,56 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 	}
 }
 
-void drawTest(void)
-{
-	for (int i = 0; i < 16; ++i)
-	{
-		drawHorizontalSub(i, i+32, i+100,(i&0xf));
-	}
-}
-
-void initDrawHLine(unsigned int baseAddr)
+void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
 {
 	planeBase = baseAddr;
+	width = w; height = h;
 	nextX = 0; nextY = 0;
 }
 
-int addHLine(unsigned char level, unsigned char length)
+int addHLine(unsigned char level, unsigned int length)
 {
-	if ((nextX >= 319) && (nextY >= 199))
+	if (nextY >= height)
 	{
 		return length; // このプレーンにはこれ以上書き込めない
 	}
-	int toWrite = length;
 
-	if (length > 320 - nextX)
+	while (length > 0)
 	{
-		toWrite = 320 - nextX;
-	}
-	length -= toWrite;
-	drawHorizontalSub(nextX, nextX + toWrite - 1, nextY,level);
-	nextX += toWrite;
-	if (length > 0)
-	{
-		nextX = 0;
-		nextY++;
-		if (nextY > 199)
+		unsigned int toWrite = length;
+
+		// 横一杯まで
+		if (toWrite > width - nextX)
 		{
-			// 積み残し
-			return length;
+			toWrite = width - nextX;
 		}
-		else
+
+		drawHorizontalSub(nextX, toWrite, nextY, level);
+		length -= toWrite;
+		nextX += toWrite;
+		if (nextX >= width)
 		{
-			// 次の行に描画
-			drawHorizontalSub(0, length - 1, nextY,level);
-			nextX = length;
-		}
-	}
-	else
-	{
-		// ちょうど一行で終わったので次の行に切り替え
-		if (nextX > 319)
-		{
-			nextX = 0;
+			// 次のラインへ
+			nextX=0;
 			nextY++;
-			if (nextY > 199)
+			if (nextY >= height)
 			{
-				return -1; // 1プレーン終了した
+				// プレーン書き出し終了
+				if (length == 0)
+				{
+					// ちょうど終わった
+					return -1;
+				}
+				else
+				{
+					// 次のプレーンでlength分描画
+					return length;
+				}
 			}
 		}
 	}
 
 	return 0; // 通常
 }
+
+
