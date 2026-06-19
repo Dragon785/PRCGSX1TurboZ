@@ -94,13 +94,101 @@ static const PaintTbl PaintTbl_7[2] =
 	{0b01111111,0b10000000}
 };
 
+static const PaintTbl* PaintTbls[7] =
+{
+	PaintTbl_1,
+	PaintTbl_2,
+	PaintTbl_3,
+	PaintTbl_4,
+	PaintTbl_5,
+	PaintTbl_6,
+	PaintTbl_7
+};
+
 // (sx,y)-(ex,y)までgrad階調で横線を引く
+// sx<=exが条件
+// 将来的には高速化の際にこれを使わないようになりそう
 static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 {
+	if (sx > ex)
+	{
+		// 描画の必要がない
+		return;
+	}
+	int writeLen = ex - sx+1; // 横に引くドットの数
+	// 書き込み相対アドレス計算
+	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
+
+	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
+	{
+		// 階調と比べて塗るかクリアか判定
+		int mustPaint = grad & (1 << plane);
+		// 書き込みバンク切り替え,基準アドレス計算
+		unsigned int writeAddr = writeBaseAddr + GRADMEMTABLE[plane].addroffset+planeBase;
+		setWriteGRAM(GRADMEMTABLE[plane].bank);
+
+		unsigned char leftPiece = sx & 7;
+		if (leftPiece)
+		{
+			// 左端が8の倍数でないならその分をまとめて書く
+			// 書き込む長さ計算(8-余りと全長の短い方)
+			int toWriteLeft = 8 - leftPiece;
+			if (toWriteLeft > writeLen)
+			{
+				toWriteLeft = writeLen;
+			}
+			PaintTbl* useTable = PaintTbls[toWriteLeft];
+			// VRAM読んでマスク
+			unsigned char writeData = inp(writeAddr) & useTable[leftPiece].mask;
+			// 書き込む階調なら書き込みデータでOR
+			if (mustPaint)
+			{
+				writeData |= useTable[leftPiece].writebit;
+			}
+			// VRAMに書き戻す
+			outp(writeAddr++, writeData);
+			writeLen -= toWriteLeft;
+			sx += toWriteLeft;
+		}
+
+		if (writeLen > 0)
+		{
+			int writeBytes = writeLen >> 3;
+			for (int i = 0; i < writeBytes; ++i)
+			{
+				// まだ残りがあるなら8の倍数分１バイトずつまとめて書く
+				// 書き込む階調なら0xff,書き込まないなら0x00
+				outp(writeAddr++,(mustPaint) ?  (0xff) : (0x00));
+			}
+			writeLen -= writeBytes << 3;
+			sx += writeBytes <<3;
+
+			if (writeLen > 0)
+			{
+				// 余りがあるならその分描画(バイト内位置は0から固定)
+				PaintTbl* useTable = PaintTbls[writeLen];
+				// VRAM読んでマスク
+				unsigned char writeData = inp(writeAddr) & useTable[0].mask;
+
+				// 書き込む階調なら書き込みデータでOR
+				if (mustPaint)
+				{
+					writeData |= useTable[0].writebit;
+				}
+				// VRAMに書き戻す
+				outp(writeAddr++, writeData);
+			}
+		}
+	}
 }
 
 void initDrawHLine(unsigned int baseAddr)
 {
 	planeBase = baseAddr;
 	nextX = 0; nextY = 0;
+}
+
+int addHLine(unsigned char level, unsigned char length)
+{
+	return 0; // dummy
 }
