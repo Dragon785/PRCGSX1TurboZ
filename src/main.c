@@ -7,7 +7,7 @@
 
 int main(int argc,char* argv[])
 {
-#if 0
+#if 1
 	set4096Mode();
 	initDrawHLine(0x4000);
 	drawTest();

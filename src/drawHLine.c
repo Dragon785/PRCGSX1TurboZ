@@ -19,10 +19,10 @@ typedef struct tag_GradMem
 // 各階調のオフセットアドレス/バンク
 static const GradMem GRADMEMTABLE[4] =
 {
+	{0x400,1},
+	{0x000,1},
 	{0x400,0},
 	{0x000,0},
-	{0x400,1},
-	{0x000,1}
 };
 
 // ８ドット未満の塗りつぶしを高速に行うためのテーブル
@@ -119,7 +119,6 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 	}
 	// 書き込み相対アドレス計算
 	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
-	printf("Write Base Addr=%04x\n", writeBaseAddr);
 	
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
@@ -141,7 +140,7 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 			{
 				toWriteLeft = writeLen;
 			}
-			PaintTbl* useTable = PaintTbls[toWriteLeft];
+			PaintTbl* useTable = PaintTbls[toWriteLeft-1];
 			// VRAM読んでマスク
 			unsigned char writeData = inp(writeAddr) & useTable[leftPiece].mask;
 			// 書き込む階調なら書き込みデータでOR
@@ -168,7 +167,7 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 			if (writeLen > 0)
 			{
 				// 余りがあるならその分描画(バイト内位置は0から固定)
-				PaintTbl* useTable = PaintTbls[writeLen];
+				PaintTbl* useTable = PaintTbls[writeLen-1];
 				// VRAM読んでマスク
 				unsigned char writeData = inp(writeAddr) & useTable[0].mask;
 
@@ -186,9 +185,9 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 
 void drawTest(void)
 {
-	for (int i = 0; i < 32; ++i)
+	for (int i = 0; i < 16; ++i)
 	{
-		drawHorizontalSub(0, 160, i,(i&0xf));
+		drawHorizontalSub(i, i+32, i+100,(i&0xf));
 	}
 }
 
