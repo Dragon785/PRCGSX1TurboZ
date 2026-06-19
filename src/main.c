@@ -7,6 +7,7 @@
 
 int main(int argc,char* argv[])
 {
+#if 0
 	set4096Mode();
 	initDrawHLine(0x4000);
 	drawTest();
@@ -15,7 +16,7 @@ int main(int argc,char* argv[])
 	int dmy=getch();
 
 	return 0;
-
+#endif
 	if (argc != 2)
 	{
 		printf("Usage: look PRCFile\n");

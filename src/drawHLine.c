@@ -120,7 +120,7 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 	// 書き込み相対アドレス計算
 	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
 	printf("Write Base Addr=%04x\n", writeBaseAddr);
-
+	
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
 		int writeLen = ex - sx + 1; // 横に引くドットの数
@@ -130,7 +130,6 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 		// 書き込みバンク切り替え,基準アドレス計算
 		unsigned int writeAddr = writeBaseAddr + GRADMEMTABLE[plane].addroffset+planeBase;
 		setWriteGRAM(GRADMEMTABLE[plane].bank);
-		printf("plane=%d Write Addr=%04x bank=%d\n",plane, writeAddr,GRADMEMTABLE[plane].bank);
 
 		unsigned char leftPiece = sx & 7;
 		if (leftPiece)
@@ -153,7 +152,6 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 			// VRAMに書き戻す
 			outp(writeAddr++, writeData);
 			writeLen -= toWriteLeft;
-			sx += toWriteLeft;
 		}
 
 		if (writeLen > 0)
@@ -166,7 +164,6 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 				outp(writeAddr++,(mustPaint) ?  (0xff) : (0x00));
 			}
 			writeLen -= writeBytes << 3;
-			sx += writeBytes <<3;
 
 			if (writeLen > 0)
 			{
@@ -189,9 +186,9 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 
 void drawTest(void)
 {
-	// for (int i = 0; i < 200; ++i)
+	for (int i = 0; i < 32; ++i)
 	{
-		drawHorizontalSub(0, 160, 0,0xf);
+		drawHorizontalSub(0, 160, i,(i&0xf));
 	}
 }
 
