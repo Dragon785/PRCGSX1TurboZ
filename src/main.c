@@ -21,7 +21,23 @@ int main(int argc,char* argv[])
 	{
 		if (setPRCGSHeader(hdrbuf) == 0)
 		{
-			// 残り読み込み
+			int finished = 0;
+			do
+			{
+				// 残り読み込み
+				char databuf[256];
+				int c = fread(databuf, 1, 256, f);
+				if (c > 0)
+				{
+					for (int i = 0; i < c; ++i)
+					{
+						if (finished=addPRCGSData(databuf[i]))
+						{
+							continue;
+						}
+					}
+				}
+			} while (!finished);
 		}
 	}
 	else

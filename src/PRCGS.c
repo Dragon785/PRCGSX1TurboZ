@@ -10,6 +10,10 @@
 static PRCGSHeader hdr = { 0 };
 static int width, height; // 読み取っておく
 static char runLength[8]; // 0-6 ヘッダ+1 7:1で固定
+static char hdrReady = 0; // ヘッダ準備できたか
+static char planeToWrite = 0;
+
+static const unsigned int PLANES[3] = { 0x8000,0xc000,0x4000 }; // R-G-B
 
 int setPRCGSHeader(const unsigned char* headers[])
 {
@@ -89,10 +93,53 @@ int setPRCGSHeader(const unsigned char* headers[])
 		return 1;
 	}
 
+	set4096Mode();
+	clearGRAM();
+
+	hdrReady = 1;
+	planeToWrite = 0;
+
+	// Red描画準備開始
+	initDrawHLine(PLANES[planeToWrite]);
 	return 0;
 }
 
 int addPRCGSData(const unsigned char dat)
 {
-	return 1; // dummy
+	if (!hdrReady)
+	{
+		printf("must read Header!\n");
+		return 0; // finish
+	}
+	// ５ビット階調なのでとりあえず一番下は普通に捨てる
+	unsigned char level = (dat >> 1) & 0xf;
+	unsigned char len = runLength[(dat >> 5)];
+	int result = addHLine(level, len);
+	if (result == 0)
+	{
+		return 1; // 同じプレーンで描画継続
+	}
+	// １プレーン描画完了
+	if (hdr.mono)
+	{
+		// プレーンデータをコピーしてモノクロにする
+		for (int i = 1; i < 3; ++i)
+		{
+			copyPlane(PLANES[0], PLANES[i]);
+		}
+		return 0; // 終了
+	}
+	planeToWrite++;
+	if (planeToWrite > 2)
+	{
+		// 全プレーン描画完了
+
+		return 0;
+	}
+	initDrawHLine(PLANES[planeToWrite]);
+	if (result > 0)
+	{
+		// 積み残し分描画
+		addHLine(level, result);
+	}
 }
