@@ -9,6 +9,7 @@
 
 static PRCGSHeader hdr = { 0 };
 static int width, height; // 読み取っておく
+static char runLength[8]; // 0-6 ヘッダ+1 7:1で固定
 
 int setPRCGSHeader(const unsigned char* headers[])
 {
@@ -21,8 +22,15 @@ int setPRCGSHeader(const unsigned char* headers[])
 
 		return -1;
 	}
-	width = (hdr.width[0] << 8) || (hdr.width[1]);
-	height = (hdr.height[0] << 8) || (hdr.height[1]);
+	width = (hdr.width[0] << 8) | (hdr.width[1]);
+	height = (hdr.height[0] << 8) | (hdr.height[1]);
+
+	for (int i = 0; i < 7; ++i)
+	{
+		runLength[i] = hdr.length[i] + 1;
+	}
+	runLength[7] = 1; // 固定
+
 #if (defined(DEBUG_WRITE_HDR_INFO))
 	printf("CreateSoftVer %c%c\n",hdr.ver[0],hdr.ver[1]);
 	printf("CreateData Machine by ");
@@ -56,15 +64,17 @@ int setPRCGSHeader(const unsigned char* headers[])
 	{
 		printf("%c", hdr.createHMS[i]);
 	}
+	printf("\n");
 	printf("Data Size %dx%d\n", width, height);
-	printf(hdr.arc ? "Compressed" : "UnCompressed");
+	printf(hdr.arc ? "Compressed\n" : "UnCompressed\n");
 	
-	printf("RunLength Table ");
-	for (int i = 0; i < 7; ++i)
+	printf("RunLength Data ");
+	for (int i = 0; i < 8; ++i)
 	{
 		printf("%d ", hdr.length[i]);
 	}
-	printf(hdr.mono ? "MonoChrome" : "Color");
+	printf("\n");
+	printf(hdr.mono ? "MonoChrome\n" : "Color\n");
 
 #endif
 
