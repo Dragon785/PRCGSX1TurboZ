@@ -1,5 +1,6 @@
 #include "drawHLine.h"
 #include "lowgraph.h"
+#include <stdlib.h>
 
 // 内部ワーク
 // 次に描画する座標(320,200で最後)
@@ -190,5 +191,48 @@ void initDrawHLine(unsigned int baseAddr)
 
 int addHLine(unsigned char level, unsigned char length)
 {
-	return 0; // dummy
+	if ((nextX >= 319) && (nextY >= 199))
+	{
+		return length; // このプレーンにはこれ以上書き込めない
+	}
+	int toWrite = length;
+
+	if (length > 320 - nextX)
+	{
+		toWrite = 320 - nextX;
+	}
+	length -= toWrite;
+	drawHorizontalSub(nextX, nextX + toWrite - 1, nextY,level);
+	nextX += toWrite;
+	if (length > 0)
+	{
+		nextX = 0;
+		nextY++;
+		if (nextY > 199)
+		{
+			// 積み残し
+			return length;
+		}
+		else
+		{
+			// 次の行に描画
+			drawHorizontalSub(0, length - 1, nextY,level);
+			nextX = length;
+		}
+	}
+	else
+	{
+		// ちょうど一行で終わったので次の行に切り替え
+		if (nextX > 319)
+		{
+			nextX = 0;
+			nextY++;
+			if (nextY > 199)
+			{
+				return -1; // 1プレーン終了した
+			}
+		}
+	}
+
+	return 0; // 通常
 }
