@@ -9,4 +9,8 @@ extern int setPRCGSHeader(const unsigned char* headers[]);
 /// @return 0:データ終わってない 1:データ完了
 extern int addPRCGSData(const unsigned char dat);
 
+/// <summary>
+/// 読み取ったヘッダデータを画面クリアしてから表示する
+/// </summary>
+extern void dispHeaderData(void);
 #endif

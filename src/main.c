@@ -29,6 +29,7 @@ int main(int argc,char* argv[])
 	{
 		if (setPRCGSHeader(hdrbuf) == 0)
 		{
+			dispHeaderData();
 			int finished = 0;
 			do
 			{
@@ -44,6 +45,10 @@ int main(int argc,char* argv[])
 						}
 					}
 				}
+				else
+				{
+					finished = 1;
+				}
 			} while (!finished);
 		}
 	}
@@ -54,7 +59,7 @@ int main(int argc,char* argv[])
 
 	fclose(f);
 
-	printf("ANY KEY");
+	clrscr();
 	int dmy = getch();
 
 	clearGRAM();

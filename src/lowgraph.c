@@ -130,12 +130,10 @@ void copyPlane(unsigned int srcAddr, unsigned int dstAddr)
 {
 	for (unsigned char bank = 0; bank < 2; ++bank)
 	{
-		unsigned int src = srcAddr;
-		unsigned int dst = dstAddr;
 		setWriteGRAM(bank);
 		for (int i = 0; i < 0x4000; ++i)
 		{
-			outp(dst++, inp(src++));
+			outp(dstAddr+i, inp(srcAddr+i));
 		}
 	}
 }

@@ -4,6 +4,7 @@
 #include "drawHLine.h"
 #include <stdio.h>
 #include <string.h>
+#include <conio.h>
 
 // #define DEBUG_WRITE_HDR_INFO
 
@@ -109,6 +110,53 @@ int setPRCGSHeader(const unsigned char* headers[])
 	return 0;
 }
 
+void dispHeaderData(void)
+{
+	if (!hdrReady)
+	{
+		printf("must read Header!\n");
+		return;
+	}
+	clrscr();
+	printf("CreateSoftVer %c%c\n", hdr.ver[0], hdr.ver[1]);
+	printf("CreateData Machine by ");
+	for (int i = 0; i < 16; ++i)
+	{
+		printf("%c", hdr.datMachine[i]);
+	}
+	printf("\n");
+
+	printf("CreateSoft by ");
+	for (int i = 0; i < 8; ++i)
+	{
+		printf("%c", hdr.appAuthor[i]);
+	}
+	printf("\n");
+
+	printf("CreateData by ");
+	for (int i = 0; i < 8; ++i)
+	{
+		printf("%c", hdr.datAuthor[i]);
+	}
+	printf("\n");
+
+	printf("Data Created at ");
+	for (int i = 0; i < 8; ++i)
+	{
+		printf("%c", hdr.createYMD[i]);
+	}
+	printf(" ");
+	for (int i = 0; i < 8; ++i)
+	{
+		printf("%c", hdr.createHMS[i]);
+	}
+	printf("\n");
+	printf("Data Size %dx%d\n", width, height);
+	printf(hdr.arc ? "Compressed\n" : "UnCompressed\n");
+
+	printf(hdr.mono ? "Mono\n" : "Color\n");
+}
+
 int addPRCGSData(const unsigned char dat)
 {
 	if (!hdrReady)
@@ -128,10 +176,8 @@ int addPRCGSData(const unsigned char dat)
 	if (hdr.mono)
 	{
 		// プレーンデータをコピーしてモノクロにする
-		for (int i = 1; i < 3; ++i)
-		{
-			copyPlane(PLANES[0], PLANES[i]);
-		}
+		copyPlane(PLANES[0], PLANES[1]);
+		copyPlane(PLANES[0], PLANES[2]);
 		return 1; // 終了
 	}
 	planeToWrite++;
