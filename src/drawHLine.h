@@ -10,6 +10,6 @@ extern void initDrawHLine(unsigned int baseAddr);
 // 横方向にはみ出る場合は一段下に折り返し
 // プレーン境界をはみ出した場合はそこで描画を止めて残数を返す。残数が0の場合は-1を返す
 // それ以外の時は戻り値0
-extern int addHLine(unsigned char level,unsigned char length)
+extern int addHLine(unsigned char level, unsigned char length);
 
 #endif

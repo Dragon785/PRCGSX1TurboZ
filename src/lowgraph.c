@@ -1,6 +1,7 @@
 // lowlevel graphic control
 
 #include "lowgraph.h"
+#include <stdlib.h>
 
 static const unsigned char CRTC_24K[14] =
 {
