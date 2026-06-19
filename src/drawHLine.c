@@ -1,6 +1,7 @@
 #include "drawHLine.h"
 #include "lowgraph.h"
 #include <stdlib.h>
+#include <stdio.h> // for debug
 
 // 内部ワーク
 // 次に描画する座標(320,200で最後)
@@ -116,17 +117,20 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 		// 描画の必要がない
 		return;
 	}
-	int writeLen = ex - sx+1; // 横に引くドットの数
 	// 書き込み相対アドレス計算
 	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
+	printf("Write Base Addr=%04x\n", writeBaseAddr);
 
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
+		int writeLen = ex - sx + 1; // 横に引くドットの数
+
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
 		// 書き込みバンク切り替え,基準アドレス計算
 		unsigned int writeAddr = writeBaseAddr + GRADMEMTABLE[plane].addroffset+planeBase;
 		setWriteGRAM(GRADMEMTABLE[plane].bank);
+		printf("plane=%d Write Addr=%04x bank=%d\n",plane, writeAddr,GRADMEMTABLE[plane].bank);
 
 		unsigned char leftPiece = sx & 7;
 		if (leftPiece)
@@ -180,6 +184,14 @@ static void drawHorizontalSub(int sx, int ex, int y, unsigned char grad)
 				outp(writeAddr++, writeData);
 			}
 		}
+	}
+}
+
+void drawTest(void)
+{
+	// for (int i = 0; i < 200; ++i)
+	{
+		drawHorizontalSub(0, 160, 0,0xf);
 	}
 }
 

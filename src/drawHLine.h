@@ -12,4 +12,6 @@ extern void initDrawHLine(unsigned int baseAddr);
 // それ以外の時は戻り値0
 extern int addHLine(unsigned char level, unsigned char length);
 
+extern void drawTest(void);
+
 #endif

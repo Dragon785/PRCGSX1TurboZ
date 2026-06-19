@@ -1,8 +1,21 @@
+#include <conio.h>
 #include <stdio.h>
 #include "PRCGS.h"
 
+#include "drawHLine.h" // lowlevel test
+#include "lowgraph.h"
+
 int main(int argc,char* argv[])
 {
+	set4096Mode();
+	initDrawHLine(0x4000);
+	drawTest();
+
+	printf("ANY KEY");
+	int dmy=getch();
+
+	return 0;
+
 	if (argc != 2)
 	{
 		printf("Usage: look PRCFile\n");
