@@ -8,6 +8,41 @@
 // データ読み込み用バッファ
 static char databuf[BUFSIZE];
 
+void sendSubCPU(unsigned char data)
+{
+	while (inp(0x1a01) & 0x40);
+	outp(0x1900, data);
+	while (inp(0x1a01) & 0x40);
+}
+
+
+unsigned char readSubCPU(void)
+{
+	while (inp(0x1a01) & 0x20);
+	return (inp(0x1900));
+}
+
+void getTime(int* hour, int* minute, int* second)
+{
+	sendSubCPU(0xef);
+
+	unsigned char hourBCD = readSubCPU();
+	unsigned char minBCD = readSubCPU();
+	unsigned char secBCD = readSubCPU();
+
+	*hour = (hourBCD >> 4) * 10 + (hourBCD & 7);
+	*minute = (minBCD >> 4) * 10 + (minBCD & 7);
+	*second = (secBCD >> 4) * 10 + (secBCD & 7);
+}
+
+long getSec(void)
+{
+	int hour, minute, second;
+	getTime(&hour, &minute, &second);
+
+	return (long)(((long)(hour * 60) + minute) * 60) + second;
+}
+
 int main(int argc,char* argv[])
 {
 	clrscr();
@@ -23,6 +58,8 @@ int main(int argc,char* argv[])
 
 		return -1;
 	}
+
+	long startTime = getSec();
 
 	char hdrbuf[128];
 	if (fread(hdrbuf, 1, 128, f) == 128)
@@ -59,10 +96,20 @@ int main(int argc,char* argv[])
 
 	fclose(f);
 
+	long endTime = getSec();
+
 	clrscr();
+
+	unsigned int diff = (unsigned int)(endTime - startTime);
+	
+
+	printf("total %d \n", diff);
+
 	int dmy = getch();
 
 	clearGRAM();
+
+	dmy = getch();
 
 	return 0;
 }

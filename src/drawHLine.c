@@ -8,6 +8,7 @@
 static unsigned int width, height;
 // 次に描画する座標(320,200で最後)
 static unsigned int nextX = 0, nextY = 0;
+// 次に描画するGRAMアドレス
 // 書き込み基準ベース
 static unsigned int planeBase = 0;
 
