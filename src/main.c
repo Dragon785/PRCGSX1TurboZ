@@ -4,7 +4,7 @@
 
 #include "lowgraph.h"
 
-#define BUFSIZE 512
+#define BUFSIZE 2048
 // データ読み込み用バッファ
 static char databuf[BUFSIZE];
 

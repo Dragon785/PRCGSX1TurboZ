@@ -5,10 +5,11 @@
 
 // 内部ワーク
 // 描画したい画面サイズ
-static unsigned int width, height;
+static unsigned int width=0, height=0;
 // 次に描画する座標(320,200で最後)
 static unsigned int nextX = 0, nextY = 0;
 // 次に描画するGRAMアドレス
+static unsigned int writeBaseAddr = 0;
 // 書き込み基準ベース
 static unsigned int planeBase = 0;
 
@@ -110,34 +111,37 @@ static const PaintTbl* PaintTbls[7] =
 	PaintTbl_7
 };
 
-// (sx,y)-(ex,y)までgrad階調で横線を引く
-// sx<=exが条件
+// addrからlenだけ線を書く。開始位置も与える（位置計算の為)
+// 戻り値は書き込み"完了"したバイト数
 // 将来的には高速化の際にこれを使わないようになりそう
-static void drawHorizontalSub(int sx, int len, int y, unsigned char grad)
+static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsigned char grad)
 {
-	// 書き込み相対アドレス計算
-	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
-	
 	unsigned char leftPiece = sx & 7;
 	unsigned char leftMask=0xff, leftWrite=0x00;
+
+	unsigned int completeWriteBytes = 0;
 	if (leftPiece)
 	{
 		int toWriteLeft = 8 - leftPiece;
+		completeWriteBytes = 1;
 		if (toWriteLeft > len)
 		{
 			toWriteLeft = len;
+			completeWriteBytes = 0; // 次この位置にまた描画するので
 		}
 		PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
 		leftMask = useTable[leftPiece].mask; leftWrite = useTable[leftPiece].writebit;
 		len -= toWriteLeft;
 	}
 	int writeBytes = (len >> 3);
+	completeWriteBytes += writeBytes;
 	unsigned char rightPiece = (len & 7);
 	unsigned char rightMask = 0xff; unsigned char rightWrite = 0x00;
 	if (rightPiece)
 	{
 		PaintTbl* useTable = PaintTbls[rightPiece - 1];
 		rightMask = useTable[0].mask; rightWrite = useTable[0].writebit;
+		// 右端は次回描画対象なので処理に含めない
 	}
 
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
@@ -176,6 +180,8 @@ static void drawHorizontalSub(int sx, int len, int y, unsigned char grad)
 			outp(writeAddr++, writeData);
 		}
 	}
+
+	return completeWriteBytes;
 }
 
 void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
@@ -183,6 +189,7 @@ void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
 	planeBase = baseAddr;
 	width = w; height = h;
 	nextX = 0; nextY = 0;
+	writeBaseAddr = 0;
 }
 
 int addHLine(unsigned char level, unsigned int length)
@@ -202,7 +209,8 @@ int addHLine(unsigned char level, unsigned int length)
 			toWrite = width - nextX;
 		}
 
-		drawHorizontalSub(nextX, toWrite, nextY, level);
+		int writedBytes=drawHorizontalSub(nextX, toWrite, writeBaseAddr, level);
+		writeBaseAddr += writedBytes;
 		length -= toWrite;
 		nextX += toWrite;
 		if (nextX >= width)
@@ -224,6 +232,8 @@ int addHLine(unsigned char level, unsigned int length)
 					return length;
 				}
 			}
+			// 新しい基準位置再計算(もっと高速化できるはず)
+			writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
 		}
 	}
 
