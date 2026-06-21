@@ -37,7 +37,7 @@ void getTime(int* hour, int* minute, int* second)
 
 long getSec(void)
 {
-	unsigned int hour, minute, second;
+	int hour, minute, second;
 	getTime(&hour, &minute, &second);
 
 	long ret = hour;

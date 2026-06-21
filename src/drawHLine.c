@@ -1,7 +1,7 @@
 #include "drawHLine.h"
 #include "lowgraph.h"
 #include <stdlib.h>
-#include <stdio.h> // for debug
+#include <string.h>
 
 // 内部ワーク
 // 描画したい画面サイズ
@@ -172,9 +172,9 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
 
-		unsigned char writeByteData = (mustpaint) ? 0xff : 0x00;
-		unsigned char leftWritePlane = (mustpaint) ? leftWrite: 0x00;
-		unsigned char rightWritePlane = (mustpaint) ? rightWrite : 0x00;
+		unsigned char writeByteData = (mustPaint) ? 0xff : 0x00;
+		unsigned char leftWritePlane = (mustPaint) ? leftWrite: 0x00;
+		unsigned char rightWritePlane = (mustPaint) ? rightWrite : 0x00;
 
 		if (leftPiece)
 		{
@@ -186,12 +186,16 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 			*(writeLineBuf++)= writeData;
 		}
 
+#if 0
 		for (int i = 0; i < writeBytes; ++i)
 		{
 			// 8ドット単位で処理出来るところ
 			*(writeLineBuf++)=writeByteData;
 		}
-
+#else
+		memset(writeLineBuf, writeByteData, writeBytes);
+#endif
+		writeLineBuf += writeBytes;
 		if (rightPiece)
 		{
 			*(writeLineBuf) = rightWritePlane;
