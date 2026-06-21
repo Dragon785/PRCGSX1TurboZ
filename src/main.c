@@ -37,10 +37,14 @@ void getTime(int* hour, int* minute, int* second)
 
 long getSec(void)
 {
-	int hour, minute, second;
+	unsigned int hour, minute, second;
 	getTime(&hour, &minute, &second);
 
-	return (long)(((long)(hour * 60) + minute) * 60) + second;
+	long ret = hour;
+	ret = ret * 60 + minute;
+	ret = ret * 60 + second;
+
+	return ret;
 }
 
 int main(int argc,char* argv[])
@@ -100,10 +104,10 @@ int main(int argc,char* argv[])
 
 	clrscr();
 
-	unsigned int diff = (unsigned int)(endTime - startTime);
+	long diff = (endTime - startTime);
 	
 
-	printf("total %d \n", diff);
+	printf("total %ld \n", diff);
 
 	int dmy = getch();
 

@@ -168,26 +168,20 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
 		unsigned char* writeLineBuf = LineBuffer[plane]+writeBaseAddr;
-		unsigned char writeByteData = 0xff;
-		unsigned char leftWritePlane = leftWrite;
-		unsigned char rightWritePlane = rightWrite;
+
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
-		if (!mustPaint)
-		{
-			// クリアの場合書き込みデータは全部0
-			leftWritePlane = 0; writeByteData = 0x00; rightWritePlane = 0;
-		}
+
+		unsigned char writeByteData = (mustpaint) ? 0xff : 0x00;
+		unsigned char leftWritePlane = (mustpaint) ? leftWrite: 0x00;
+		unsigned char rightWritePlane = (mustpaint) ? rightWrite : 0x00;
 
 		if (leftPiece)
 		{
 			// VRAM読んでマスク
 			unsigned char writeData = (*writeLineBuf) & leftMask;
-			// 書き込む階調なら書き込みデータでOR
-			if (mustPaint)
-			{
-				writeData |= leftWritePlane;
-			}
+			// 書き込みデータでOR
+			writeData |= leftWritePlane;
 			// VRAMに書き戻す
 			*(writeLineBuf++)= writeData;
 		}
