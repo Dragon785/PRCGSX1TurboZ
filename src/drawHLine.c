@@ -168,8 +168,16 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
 		unsigned char* writeLineBuf = LineBuffer[plane]+writeBaseAddr;
+		unsigned char writeByteData = 0xff;
+		unsigned char leftWritePlane = leftWrite;
+		unsigned char rightWritePlane = rightWrite;
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
+		if (!mustPaint)
+		{
+			// クリアの場合書き込みデータは全部0
+			leftWritePlane = 0; writeByteData = 0x00; rightWritePlane = 0;
+		}
 
 		if (leftPiece)
 		{
@@ -178,12 +186,12 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 			// 書き込む階調なら書き込みデータでOR
 			if (mustPaint)
 			{
-				writeData |= leftWrite;
+				writeData |= leftWritePlane;
 			}
 			// VRAMに書き戻す
 			*(writeLineBuf++)= writeData;
 		}
-		unsigned char writeByteData = (mustPaint) ? (0xff) : (0x00);
+
 		for (int i = 0; i < writeBytes; ++i)
 		{
 			// 8ドット単位で処理出来るところ
@@ -192,12 +200,7 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 
 		if (rightPiece)
 		{
-			unsigned char writeData = 0; // 右端は前のデータは潰していい
-			if (mustPaint)
-			{
-				writeData |= rightWrite;
-			}
-			*(writeLineBuf) = writeData;
+			*(writeLineBuf) = rightWritePlane;
 		}
 	}
 
@@ -256,8 +259,16 @@ int addHLine(unsigned char level, unsigned int length)
 					return length;
 				}
 			}
-			// 新しい基準位置再計算(もっと高速化できるはず)
-			writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
+			// 新しい基準位置再計算
+			// writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
+			if (nextY & 7)
+			{
+				writeBaseAddr += 1<<11;
+			}
+			else
+			{
+				writeBaseAddr =(writeBaseAddr&0x7ff)+40;
+			}
 		}
 	}
 
