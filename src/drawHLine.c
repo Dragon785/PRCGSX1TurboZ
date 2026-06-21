@@ -5,9 +5,13 @@
 
 // 内部ワーク
 // 描画したい画面サイズ
-static unsigned int width, height;
+static unsigned int width=0, height=0;
 // 次に描画する座標(320,200で最後)
 static unsigned int nextX = 0, nextY = 0;
+// 次に描画するラインバッファ位置
+static unsigned int writeBufAddr = 0;
+// 次に描画するGRAMアドレス
+static unsigned int writeBaseAddr = 0;
 // 書き込み基準ベース
 static unsigned int planeBase = 0;
 
@@ -109,75 +113,95 @@ static const PaintTbl* PaintTbls[7] =
 	PaintTbl_7
 };
 
-// (sx,y)-(ex,y)までgrad階調で横線を引く
-// sx<=exが条件
-// 将来的には高速化の際にこれを使わないようになりそう
-static void drawHorizontalSub(int sx, int len, int y, unsigned char grad)
+// RAM上で1ライン分処理する為のバッファ（4プレーン分)
+static unsigned char LineBuffer[4][40];
+
+// バッファからGRAMに書き込む
+static void transferBufferToGRAM(unsigned int writeBaseAddr)
 {
-	// 書き込み相対アドレス計算
-	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
-	
+	unsigned int writePlaneBase = writeBaseAddr + planeBase;
+	for (int plane = 0; plane < 4; ++plane)
+	{
+		unsigned int writeAddr = writePlaneBase + GRADMEMTABLE[plane].addroffset;
+		unsigned char* readBuf = LineBuffer[plane];
+		setWriteGRAM(GRADMEMTABLE[plane].bank);
+		for (int i = 0; i < 40; ++i)
+		{
+			outp(writeAddr++, *readBuf++);
+		}
+	}
+}
+
+// addrからlenだけラインバッファに線を書く。開始位置も与える（位置計算の為)
+// 戻り値は書き込み"完了"したバイト数
+// 将来的には高速化の際にこれを使わないようになりそう
+static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsigned char grad)
+{
+	unsigned char leftPiece = sx & 7;
+	unsigned char leftMask=0xff, leftWrite=0x00;
+
+	unsigned int completeWriteBytes = 0;
+	if (leftPiece)
+	{
+		int toWriteLeft = 8 - leftPiece;
+		completeWriteBytes = 1;
+		if (toWriteLeft > len)
+		{
+			toWriteLeft = len;
+			completeWriteBytes = 0; // 次この位置にまた描画するので
+		}
+		PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
+		leftMask = useTable[leftPiece].mask; leftWrite = useTable[leftPiece].writebit;
+		len -= toWriteLeft;
+	}
+	int writeBytes = (len >> 3);
+	completeWriteBytes += writeBytes;
+	unsigned char rightPiece = (len & 7);
+	unsigned char rightMask = 0xff; unsigned char rightWrite = 0x00;
+	if (rightPiece)
+	{
+		PaintTbl* useTable = PaintTbls[rightPiece - 1];
+		rightMask = useTable[0].mask; rightWrite = useTable[0].writebit;
+		// 右端は次回描画対象なので処理に含めない
+	}
+
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
-		int writeLen = len; // 横に引くドットの数
-
+		unsigned char* writeLineBuf = LineBuffer[plane]+writeBaseAddr;
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
-		// 書き込みバンク切り替え,基準アドレス計算
-		unsigned int writeAddr = writeBaseAddr + GRADMEMTABLE[plane].addroffset+planeBase;
-		setWriteGRAM(GRADMEMTABLE[plane].bank);
 
-		unsigned char leftPiece = sx & 7;
 		if (leftPiece)
 		{
-			// 左端が8の倍数でないならその分をまとめて書く
-			// 書き込む長さ計算(8-余りと全長の短い方)
-			int toWriteLeft = 8 - leftPiece;
-			if (toWriteLeft > writeLen)
-			{
-				toWriteLeft = writeLen;
-			}
-			PaintTbl* useTable = PaintTbls[toWriteLeft-1];
 			// VRAM読んでマスク
-			unsigned char writeData = inp(writeAddr) & useTable[leftPiece].mask;
+			unsigned char writeData = (*writeLineBuf) & leftMask;
 			// 書き込む階調なら書き込みデータでOR
 			if (mustPaint)
 			{
-				writeData |= useTable[leftPiece].writebit;
+				writeData |= leftWrite;
 			}
 			// VRAMに書き戻す
-			outp(writeAddr++, writeData);
-			writeLen -= toWriteLeft;
+			*(writeLineBuf++)= writeData;
+		}
+		unsigned char writeByteData = (mustPaint) ? (0xff) : (0x00);
+		for (int i = 0; i < writeBytes; ++i)
+		{
+			// 8ドット単位で処理出来るところ
+			*(writeLineBuf++)=writeByteData;
 		}
 
-		if (writeLen > 0)
+		if (rightPiece)
 		{
-			int writeBytes = writeLen >> 3;
-			for (int i = 0; i < writeBytes; ++i)
+			unsigned char writeData = 0; // 右端は前のデータは潰していい
+			if (mustPaint)
 			{
-				// まだ残りがあるなら8の倍数分１バイトずつまとめて書く
-				// 書き込む階調なら0xff,書き込まないなら0x00
-				outp(writeAddr++,(mustPaint) ?  (0xff) : (0x00));
+				writeData |= rightWrite;
 			}
-			writeLen -= writeBytes << 3;
-
-			if (writeLen > 0)
-			{
-				// 余りがあるならその分描画(バイト内位置は0から固定)
-				PaintTbl* useTable = PaintTbls[writeLen-1];
-				// VRAM読んでマスク
-				unsigned char writeData = inp(writeAddr) & useTable[0].mask;
-
-				// 書き込む階調なら書き込みデータでOR
-				if (mustPaint)
-				{
-					writeData |= useTable[0].writebit;
-				}
-				// VRAMに書き戻す
-				outp(writeAddr++, writeData);
-			}
+			*(writeLineBuf) = writeData;
 		}
 	}
+
+	return completeWriteBytes;
 }
 
 void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
@@ -185,6 +209,8 @@ void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
 	planeBase = baseAddr;
 	width = w; height = h;
 	nextX = 0; nextY = 0;
+	writeBufAddr = 0;
+	writeBaseAddr = 0;
 }
 
 int addHLine(unsigned char level, unsigned int length)
@@ -204,13 +230,17 @@ int addHLine(unsigned char level, unsigned int length)
 			toWrite = width - nextX;
 		}
 
-		drawHorizontalSub(nextX, toWrite, nextY, level);
+		int writedBytes=drawHorizontalSub(nextX, toWrite, writeBufAddr, level);
+		writeBufAddr += writedBytes;
 		length -= toWrite;
 		nextX += toWrite;
 		if (nextX >= width)
 		{
+			// 1ラインバッファからGRAMに書き出す
+			transferBufferToGRAM(writeBaseAddr);
 			// 次のラインへ
 			nextX=0;
+			writeBufAddr = 0;
 			nextY++;
 			if (nextY >= height)
 			{
@@ -226,6 +256,8 @@ int addHLine(unsigned char level, unsigned int length)
 					return length;
 				}
 			}
+			// 新しい基準位置再計算(もっと高速化できるはず)
+			writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
 		}
 	}
 

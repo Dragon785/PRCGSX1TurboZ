@@ -16,7 +16,7 @@ static char planeToWrite = 0;
 
 static const unsigned int PLANES[3] = { 0x8000,0xc000,0x4000 }; // R-G-B
 
-int setPRCGSHeader(const unsigned char* headers[])
+int setPRCGSHeader(const unsigned char* headers)
 {
 	memcpy(&hdr, headers, 0x80);
 
