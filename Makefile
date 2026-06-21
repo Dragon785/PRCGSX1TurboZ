@@ -7,7 +7,7 @@ PLATFORM = cpm
 TARGET = look.com
 
 SRCDIR = src
-SRCS=$(SRCDIR)\lowgraph.c $(SRCDIR)\main.c $(SRCDIR)\drawHLine.c $(SRCDIR)\PRCGS.c
+SRCS=$(SRCDIR)\dma.c $(SRCDIR)\lowgraph.c $(SRCDIR)\main.c $(SRCDIR)\drawHLine.c $(SRCDIR)\PRCGS.c
 
 OBJDIR = obj
 
