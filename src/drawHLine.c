@@ -118,65 +118,62 @@ static void drawHorizontalSub(int sx, int len, int y, unsigned char grad)
 	// 書き込み相対アドレス計算
 	unsigned int writeBaseAddr = (sx >> 3) + ((y & 7) << 11) + ((y >> 3) * 40);
 	
+	unsigned char leftPiece = sx & 7;
+	unsigned char leftMask=0xff, leftWrite=0x00;
+	if (leftPiece)
+	{
+		int toWriteLeft = 8 - leftPiece;
+		if (toWriteLeft > len)
+		{
+			toWriteLeft = len;
+		}
+		PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
+		leftMask = useTable[leftPiece].mask; leftWrite = useTable[leftPiece].writebit;
+		len -= toWriteLeft;
+	}
+	int writeBytes = (len >> 3);
+	unsigned char rightPiece = (len & 7);
+	unsigned char rightMask = 0xff; unsigned char rightWrite = 0x00;
+	if (rightPiece)
+	{
+		PaintTbl* useTable = PaintTbls[rightPiece - 1];
+		rightMask = useTable[0].mask; rightWrite = useTable[0].writebit;
+	}
+
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
-		int writeLen = len; // 横に引くドットの数
-
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
 		// 書き込みバンク切り替え,基準アドレス計算
 		unsigned int writeAddr = writeBaseAddr + GRADMEMTABLE[plane].addroffset+planeBase;
 		setWriteGRAM(GRADMEMTABLE[plane].bank);
 
-		unsigned char leftPiece = sx & 7;
 		if (leftPiece)
 		{
-			// 左端が8の倍数でないならその分をまとめて書く
-			// 書き込む長さ計算(8-余りと全長の短い方)
-			int toWriteLeft = 8 - leftPiece;
-			if (toWriteLeft > writeLen)
-			{
-				toWriteLeft = writeLen;
-			}
-			PaintTbl* useTable = PaintTbls[toWriteLeft-1];
 			// VRAM読んでマスク
-			unsigned char writeData = inp(writeAddr) & useTable[leftPiece].mask;
+			unsigned char writeData = inp(writeAddr) & leftMask;
 			// 書き込む階調なら書き込みデータでOR
 			if (mustPaint)
 			{
-				writeData |= useTable[leftPiece].writebit;
+				writeData |= leftWrite;
 			}
 			// VRAMに書き戻す
 			outp(writeAddr++, writeData);
-			writeLen -= toWriteLeft;
+		}
+		for (int i = 0; i < writeBytes; ++i)
+		{
+			// 8ドット単位で処理出来るところ
+			outp(writeAddr++, (mustPaint) ? (0xff) : (0x00));
 		}
 
-		if (writeLen > 0)
+		if (rightPiece)
 		{
-			int writeBytes = writeLen >> 3;
-			for (int i = 0; i < writeBytes; ++i)
+			unsigned char writeData = inp(writeAddr) & rightMask;
+			if (mustPaint)
 			{
-				// まだ残りがあるなら8の倍数分１バイトずつまとめて書く
-				// 書き込む階調なら0xff,書き込まないなら0x00
-				outp(writeAddr++,(mustPaint) ?  (0xff) : (0x00));
+				writeData |= rightWrite;
 			}
-			writeLen -= writeBytes << 3;
-
-			if (writeLen > 0)
-			{
-				// 余りがあるならその分描画(バイト内位置は0から固定)
-				PaintTbl* useTable = PaintTbls[writeLen-1];
-				// VRAM読んでマスク
-				unsigned char writeData = inp(writeAddr) & useTable[0].mask;
-
-				// 書き込む階調なら書き込みデータでOR
-				if (mustPaint)
-				{
-					writeData |= useTable[0].writebit;
-				}
-				// VRAMに書き戻す
-				outp(writeAddr++, writeData);
-			}
+			outp(writeAddr++, writeData);
 		}
 	}
 }
