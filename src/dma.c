@@ -10,6 +10,7 @@ void resetDMA(void)
 	}
 }
 
+
 void enableDMA(void)
 {
 	outp(DMA_ADDR, 0x87);
@@ -23,6 +24,23 @@ void setDMAData(unsigned char cmds[], unsigned char size)
 		outp(DMA_ADDR, *p++);
 	}
 }
+
+// status byte
+// 7:X
+// 6:X
+// 5:end of block 0
+// 4:match found 0
+// 3:interrupt pending 0
+// 2:X
+// 1:ready active 0
+// 0:transfer has occurred 1
+
+static const unsigned char readStatonlyCmd[2] =
+{
+	0b10111011, // 0xbb read mask cmd
+	0b00000001  // status byte only
+                // pb addr h/l pa addr h/l byte counter h/l stat
+};
 
 static unsigned char xferM2GRAMCmd[13] =
 {
