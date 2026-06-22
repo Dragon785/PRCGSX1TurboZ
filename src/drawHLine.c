@@ -149,12 +149,14 @@ static inline int pset(int sx, unsigned int writeBaseAddr,unsigned char grad)
 	for (int plane = 0; plane < 4; ++plane)
 	{
 		unsigned char* writeLineBuf = LineBuffer[plane] + writeBaseAddr;
-		unsigned char writeData = (*writeLineBuf) & mask;
 		if (grad & (1 << plane))
 		{
-			writeData |= write;
+			unsigned char writeData = (*writeLineBuf) & mask;
+			{
+				writeData |= write;
+			}
+			*writeLineBuf = writeData;
 		}
-		*writeLineBuf = writeData;
 	}
 
 	return (writePos == 7) ? 1 : 0; // 7の時だけアドレスインクリメント
@@ -200,9 +202,7 @@ static inline int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr,
 		// 階調と比べて塗るかクリアか判定
 		int mustPaint = grad & (1 << plane);
 
-		unsigned char writeByteData = (mustPaint) ? 0xff : 0x00;
 		unsigned char leftWritePlane = (mustPaint) ? leftWrite: 0x00;
-		unsigned char rightWritePlane = (mustPaint) ? rightWrite : 0x00;
 
 		if (leftPiece)
 		{
@@ -214,12 +214,17 @@ static inline int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr,
 			*(writeLineBuf++)= writeData;
 		}
 
-		memset(writeLineBuf, writeByteData, writeBytes);
+		// VRAMは最初に0クリアしてあるのでffで塗るときのみ処理
+		if (mustPaint)
+		{
+			memset(writeLineBuf, 0xff , writeBytes);
+		}
 
 		writeLineBuf += writeBytes;
-		if (rightPiece)
+		// 右端もマスクを取る必要は無い
+		if ((rightPiece)&&(mustPaint))
 		{
-			*(writeLineBuf) = rightWritePlane;
+			*(writeLineBuf) = rightWrite;
 		}
 	}
 
@@ -233,12 +238,15 @@ void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
 	nextX = 0; nextY = 0;
 	writeBufAddr = 0;
 	writeBaseAddr = 0;
+	memset(LineBuffer[0], 0, 160);
 }
 
 static void toNextLine(void)
 {
 	// 1ラインバッファからGRAMに書き出す
 	transferBufferToGRAM(writeBaseAddr);
+	// ラインバッファクリア
+	memset(LineBuffer[0], 0, 160);
 	// 次のラインへ
 	nextX = 0;
 	writeBufAddr = 0;
