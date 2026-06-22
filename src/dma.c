@@ -1,5 +1,7 @@
 // https://kyouichisato.blogspot.com/2014/09/bds-c-x1-turbo-dma.htmlを元にリライト
 
+#include <stdlib.h>
+
 #define DMA_ADDR 0x1f80
 
 void resetDMA(void)

@@ -1,7 +1,7 @@
 # makefile for nmake
 
 CC = zcc
-CFLAGS = -c -O2
+CFLAGS = -c -O2 -compiler=sdcc
 PLATFORM = cpm
 
 TARGET = look.com

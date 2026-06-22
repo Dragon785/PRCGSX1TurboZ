@@ -1,7 +1,8 @@
-#include "drawHLine.h"
-#include "lowgraph.h"
 #include <stdlib.h>
 #include <string.h>
+#include "drawHLine.h"
+#include "lowgraph.h"
+#include "dma.h"
 
 // 内部ワーク
 // 描画したい画面サイズ
@@ -122,20 +123,26 @@ static void transferBufferToGRAM(unsigned int writeBaseAddr)
 	unsigned int writePlaneBase = writeBaseAddr + planeBase;
 	for (int plane = 0; plane < 4; ++plane)
 	{
-		unsigned int writeAddr = writePlaneBase + GRADMEMTABLE[plane].addroffset;
+		unsigned short writeAddr = writePlaneBase + GRADMEMTABLE[plane].addroffset;
 		unsigned char* readBuf = LineBuffer[plane];
 		setWriteGRAM(GRADMEMTABLE[plane].bank);
+#if 0
 		for (int i = 0; i < 40; ++i)
 		{
 			outp(writeAddr++, *readBuf++);
 		}
+#else
+		resetDMA();
+		xferM2GRAM((unsigned short)(readBuf), writeAddr, 40);
+		enableDMA();
+#endif
 	}
 }
 
 // addrからlenだけラインバッファに線を書く。開始位置も与える（位置計算の為)
 // 戻り値は書き込み"完了"したバイト数
 // 将来的には高速化の際にこれを使わないようになりそう
-static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsigned char grad)
+static inline int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsigned char grad)
 {
 	unsigned char leftPiece = sx & 7;
 	unsigned char leftMask=0xff, leftWrite=0x00;
@@ -150,7 +157,7 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 			toWriteLeft = len;
 			completeWriteBytes = 0; // 次この位置にまた描画するので
 		}
-		PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
+		const PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
 		leftMask = useTable[leftPiece].mask; leftWrite = useTable[leftPiece].writebit;
 		len -= toWriteLeft;
 	}
@@ -160,7 +167,7 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 	unsigned char rightMask = 0xff; unsigned char rightWrite = 0x00;
 	if (rightPiece)
 	{
-		PaintTbl* useTable = PaintTbls[rightPiece - 1];
+		const PaintTbl* useTable = PaintTbls[rightPiece - 1];
 		rightMask = useTable[0].mask; rightWrite = useTable[0].writebit;
 		// 右端は次回描画対象なので処理に含めない
 	}
@@ -186,15 +193,8 @@ static int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr, unsign
 			*(writeLineBuf++)= writeData;
 		}
 
-#if 0
-		for (int i = 0; i < writeBytes; ++i)
-		{
-			// 8ドット単位で処理出来るところ
-			*(writeLineBuf++)=writeByteData;
-		}
-#else
 		memset(writeLineBuf, writeByteData, writeBytes);
-#endif
+
 		writeLineBuf += writeBytes;
 		if (rightPiece)
 		{
@@ -232,6 +232,7 @@ int addHLine(unsigned char level, unsigned int length)
 		}
 
 		int writedBytes=drawHorizontalSub(nextX, toWrite, writeBufAddr, level);
+
 		writeBufAddr += writedBytes;
 		length -= toWrite;
 		nextX += toWrite;

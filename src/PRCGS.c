@@ -8,7 +8,7 @@
 
 // #define DEBUG_WRITE_HDR_INFO
 
-static PRCGSHeader hdr = { 0 };
+static PRCGSHeader hdr;
 static int width, height; // 読み取っておく
 static unsigned int runLength[8]; // ランレングステーブル 0:1で固定 1-7 ヘッダ+1
 static char hdrReady = 0; // ヘッダ準備できたか
