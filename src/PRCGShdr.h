@@ -3,7 +3,7 @@
 
 /* https://maaberu.web.fc2.com/prcgs.htmを参考にヘッダを記述 */
 
-#pragma align(1)
+// #pragma align(1)
 typedef struct tag_PRCGS
 {
 	unsigned char hdr[3]; // 'P_3'

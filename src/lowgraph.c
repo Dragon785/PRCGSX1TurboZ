@@ -126,7 +126,7 @@ void set4096Mode(void)
 }
 
 // COPY GRAM Plane(Bank 0/1)
-void copyPlane(unsigned int srcAddr, unsigned int dstAddr)
+void copyPlane(unsigned short srcAddr, unsigned short dstAddr)
 {
 	for (unsigned char bank = 0; bank < 2; ++bank)
 	{
