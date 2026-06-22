@@ -71,7 +71,7 @@ int main(int argc,char* argv[])
 					{
 						if (finished=addPRCGSData(databuf[i]))
 						{
-							continue;
+							break;
 						}
 					}
 				}
