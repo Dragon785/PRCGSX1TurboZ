@@ -22,7 +22,7 @@ unsigned char readSubCPU(void)
 	return (inp(0x1900));
 }
 
-void getTime(int* hour, int* minute, int* second)
+void getTime(char* hour, char* minute, char* second)
 {
 	sendSubCPU(0xef);
 
@@ -33,18 +33,6 @@ void getTime(int* hour, int* minute, int* second)
 	*hour = (hourBCD >> 4) * 10 + (hourBCD & 7);
 	*minute = (minBCD >> 4) * 10 + (minBCD & 7);
 	*second = (secBCD >> 4) * 10 + (secBCD & 7);
-}
-
-long getSec(void)
-{
-	int hour, minute, second;
-	getTime(&hour, &minute, &second);
-
-	long ret = hour;
-	ret = ret * 60 + minute;
-	ret = ret * 60 + second;
-
-	return ret;
 }
 
 int main(int argc,char* argv[])
@@ -63,7 +51,8 @@ int main(int argc,char* argv[])
 		return -1;
 	}
 
-	long startTime = getSec();
+	char s_h=0, s_m=0, s_s=0;
+	getTime(&s_h, &s_m, &s_s);
 
 	char hdrbuf[128];
 	if (fread(hdrbuf, 1, 128, f) == 128)
@@ -100,14 +89,17 @@ int main(int argc,char* argv[])
 
 	fclose(f);
 
-	long endTime = getSec();
+	char e_h=0, e_m=0, e_s=0;
+	getTime(&e_h, &e_m, &e_s);
 
 	clrscr();
 
-	long diff = (endTime - startTime);
+	int diff = e_s - s_s;
+	diff = diff + (e_m - s_m) * 60;
+	diff = diff + (e_h - s_h) * 3600;
 	
 
-	printf("total %ld \n", diff);
+	printf("total %d sec (%d:%d:%d)-(%d:%d:%d) \n", diff,s_h,s_m,s_s,e_h,e_m,e_s);
 
 	int dmy = getch();
 

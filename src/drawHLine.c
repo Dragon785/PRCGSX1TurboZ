@@ -139,6 +139,27 @@ static void transferBufferToGRAM(unsigned int writeBaseAddr)
 	}
 }
 
+static inline int pset(int sx, unsigned int writeBaseAddr,unsigned char grad)
+{
+	unsigned char writePos = sx & 7;
+	const PaintTbl* tbl = PaintTbls[0]; // 1ドット塗りつぶしテーブル
+	unsigned char mask = tbl[writePos].mask;
+	unsigned char write = tbl[writePos].writebit;
+
+	for (int plane = 0; plane < 4; ++plane)
+	{
+		unsigned char* writeLineBuf = LineBuffer[plane] + writeBaseAddr;
+		unsigned char writeData = (*writeLineBuf) & mask;
+		if (grad & (1 << plane))
+		{
+			writeData |= write;
+		}
+		*writeLineBuf = writeData;
+	}
+
+	return (writePos == 7) ? 1 : 0; // 7の時だけアドレスインクリメント
+}
+
 // addrからlenだけラインバッファに線を書く。開始位置も与える（位置計算の為)
 // 戻り値は書き込み"完了"したバイト数
 // 将来的には高速化の際にこれを使わないようになりそう
@@ -214,64 +235,98 @@ void initDrawHLine(unsigned int baseAddr,unsigned int w,unsigned int h)
 	writeBaseAddr = 0;
 }
 
+static void toNextLine(void)
+{
+	// 1ラインバッファからGRAMに書き出す
+	transferBufferToGRAM(writeBaseAddr);
+	// 次のラインへ
+	nextX = 0;
+	writeBufAddr = 0;
+	nextY++;
+}
+
 int addHLine(unsigned char level, unsigned int length)
 {
 	if (nextY >= height)
 	{
 		return length; // このプレーンにはこれ以上書き込めない
 	}
-
-	while (length > 0)
+	if (length == 1)
 	{
-		unsigned int toWrite = length;
-
-		// 横一杯まで
-		if (toWrite > width - nextX)
+		// 長さ1特別処理。ただのPSET
+		if (pset(nextX, writeBufAddr, level))
 		{
-			toWrite = width - nextX;
+			// 書き込み位置次のバイトに
+			writeBufAddr++;
 		}
-
-		int writedBytes=drawHorizontalSub(nextX, toWrite, writeBufAddr, level);
-
-		writeBufAddr += writedBytes;
-		length -= toWrite;
-		nextX += toWrite;
+		nextX++;
 		if (nextX >= width)
 		{
-			// 1ラインバッファからGRAMに書き出す
-			transferBufferToGRAM(writeBaseAddr);
-			// 次のラインへ
-			nextX=0;
-			writeBufAddr = 0;
-			nextY++;
+			toNextLine();
 			if (nextY >= height)
 			{
-				// プレーン書き出し終了
-				if (length == 0)
-				{
-					// ちょうど終わった
-					return -1;
-				}
-				else
-				{
-					// 次のプレーンでlength分描画
-					return length;
-				}
+				return -1;
 			}
-			// 新しい基準位置再計算
-			// writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
 			if (nextY & 7)
 			{
-				writeBaseAddr += 1<<11;
+				writeBaseAddr += 1 << 11;
 			}
 			else
 			{
-				writeBaseAddr =(writeBaseAddr&0x7ff)+40;
+				writeBaseAddr = (writeBaseAddr & 0x7ff) + 40;
 			}
 		}
+		return 0; // 継続
 	}
+	else
+	{
+		while (length > 0)
+		{
+			unsigned int toWrite = length;
 
-	return 0; // 通常
+			// 横一杯まで
+			if (toWrite > width - nextX)
+			{
+				toWrite = width - nextX;
+			}
+
+			int writedBytes = drawHorizontalSub(nextX, toWrite, writeBufAddr, level);
+
+			writeBufAddr += writedBytes;
+			length -= toWrite;
+			nextX += toWrite;
+			if (nextX >= width)
+			{
+				toNextLine();
+				if (nextY >= height)
+				{
+					// プレーン書き出し終了
+					if (length == 0)
+					{
+						// ちょうど終わった
+						return -1;
+					}
+					else
+					{
+						// 次のプレーンでlength分描画
+						return length;
+					}
+				}
+				// 新しい基準位置再計算
+				// writeBaseAddr = ((nextY & 7) << 11) + ((nextY >> 3) * 40);
+				if (nextY & 7)
+				{
+					writeBaseAddr += 1 << 11;
+				}
+				else
+				{
+					writeBaseAddr = (writeBaseAddr & 0x7ff) + 40;
+				}
+			}
+		}
+
+		return 0; // 通常
+	}
 }
 
 
