@@ -174,11 +174,14 @@ static inline int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr,
 	if (leftPiece)
 	{
 		int toWriteLeft = 8 - leftPiece;
-		completeWriteBytes = 1;
 		if (toWriteLeft > len)
 		{
 			toWriteLeft = len;
 			completeWriteBytes = 0; // 次この位置にまた描画するので
+		}
+		else
+		{
+			completeWriteBytes = 1;
 		}
 		const PaintTbl* useTable = PaintTbls[toWriteLeft - 1];
 		leftMask = useTable[leftPiece].mask; leftWrite = useTable[leftPiece].writebit;
@@ -197,34 +200,30 @@ static inline int drawHorizontalSub(int sx, int len, unsigned int writeBaseAddr,
 
 	for (int plane = 0; plane < 4; ++plane) // ４プレーン毎に
 	{
-		unsigned char* writeLineBuf = LineBuffer[plane]+writeBaseAddr;
-
-		// 階調と比べて塗るかクリアか判定
-		int mustPaint = grad & (1 << plane);
-
-		unsigned char leftWritePlane = (mustPaint) ? leftWrite: 0x00;
-
-		if (leftPiece)
+		// バッファは０クリア済みなので描画する場合のみ処理が発生する
+		if (grad&(1<<plane))
 		{
-			// VRAM読んでマスク
-			unsigned char writeData = (*writeLineBuf) & leftMask;
-			// 書き込みデータでOR
-			writeData |= leftWritePlane;
-			// VRAMに書き戻す
-			*(writeLineBuf++)= writeData;
-		}
+			unsigned char* writeLineBuf = LineBuffer[plane] + writeBaseAddr;
 
-		// VRAMは最初に0クリアしてあるのでffで塗るときのみ処理
-		if (mustPaint)
-		{
-			memset(writeLineBuf, 0xff , writeBytes);
-		}
+			if (leftPiece)
+			{
+				// VRAM読んでマスク
+				unsigned char writeData = (*writeLineBuf) & leftMask;
+				// 書き込みデータでOR
+				writeData |= leftWrite;
+				// VRAMに書き戻す
+				*(writeLineBuf++) = writeData;
+			}
 
-		writeLineBuf += writeBytes;
-		// 右端もマスクを取る必要は無い
-		if ((rightPiece)&&(mustPaint))
-		{
-			*(writeLineBuf) = rightWrite;
+			// VRAMは最初に0クリアしてあるのでffで塗るときのみ処理
+			memset(writeLineBuf, 0xff, writeBytes);
+
+			writeLineBuf += writeBytes;
+			// 右端もマスクを取る必要は無い
+			if (rightPiece)
+			{
+				*(writeLineBuf) = rightWrite;
+			}
 		}
 	}
 

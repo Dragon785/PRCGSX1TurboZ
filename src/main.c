@@ -3,6 +3,7 @@
 #include "PRCGS.h"
 
 #include "lowgraph.h"
+#include "dma.h"
 
 #define BUFSIZE 2048
 // データ読み込み用バッファ
@@ -99,13 +100,11 @@ int main(int argc,char* argv[])
 	diff = diff + (e_h - s_h) * 3600;
 	
 
-	printf("total %d sec (%d:%d:%d)-(%d:%d:%d) \n", diff,s_h,s_m,s_s,e_h,e_m,e_s);
-
 	int dmy = getch();
 
 	clearGRAM();
 
-	dmy = getch();
+	printf("total %d sec (%d:%d:%d)-(%d:%d:%d) \n", diff, s_h, s_m, s_s, e_h, e_m, e_s);
 
 	return 0;
 }
